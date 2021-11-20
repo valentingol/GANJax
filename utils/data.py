@@ -8,6 +8,7 @@ def load_images_mnist(batch_size=128, seed=0):
         X = tf.cast(X, tf.float32)
         # Normalization, pixels in [-1, 1]
         X = (X / 255.0) * 2.0 - 1.0
+        X = tf.expand_dims(X, axis=-1)
         # shape=(batch_size, 28, 28, 1)
         return X
     (X_train, _), (X_test, _) = tf.keras.datasets.mnist.load_data()
@@ -77,7 +78,7 @@ def load_images_celeba_128(batch_size=128, seed=0, path='data/CelebA/images'):
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
-    ds = load_images_celeba_128()
+    ds = load_images_mnist()
     tf.print('length:', ds.__len__())
     tf.print('spec:', ds.element_spec)
     plt.figure(figsize=(10, 10))
