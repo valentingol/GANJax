@@ -83,6 +83,8 @@ Then you can implement your own GAN and train/test them in your own dataset (by 
 
 * On MNIST:
 
+![DCGAN Cifar10](ressources/dcgan_mnist.png)
+
 * On Cifar10:
 
 ![DCGAN Cifar10](ressources/dcgan_cifar10.png)
