@@ -36,7 +36,7 @@ class DCGenerator(hk.Module):
             ]
 
         self.batch_norms = [
-            hk.BatchNorm(True, True, 0.99) for _ in range(self.n_layers - 1)
+            hk.BatchNorm(False, False, 0.99) for _ in range(self.n_layers - 1)
             ]
 
     def forward(self, z, is_training):
@@ -116,7 +116,7 @@ class DCGANConfig(GANConfig):
         self.channels_gen = (256, 128, 64, 1)
         self.ker_shapes_gen = (3, 4, 3, 4)
         self.strides_gen = (2, 1, 2, 2)
-        self.padding_gen = ((0, 0), (0, 0), (0, 0), (0, 0))
+        self.padding_gen = (0, 0, 0, 0)
         self.name_gen = 'DCGAN_gen'
         self.lr_gen = 1e-4
         self.beta1_gen = 0.5
@@ -126,7 +126,7 @@ class DCGANConfig(GANConfig):
         self.channels_disc = (16, 32, 1)
         self.ker_shapes_disc = 4
         self.strides_disc = 2
-        self.padding_disc = ((0, 0), (0, 0), (0, 0))
+        self.padding_disc = (0, 0, 0, 0)
         self.name_disc = 'DCGAN_disc'
         self.lr_disc = 1e-4
         self.beta1_disc = 0.5
