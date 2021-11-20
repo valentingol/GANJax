@@ -37,7 +37,7 @@ You can install JAX following the instruction on [JAX - Installation](https://gi
 pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
 ```
 
-Then you can install [Tensorflow](https://www.tensorflow.org/) to benefit from `tf.data.Dataset` to handle the data and the pre-installed dataset. However, Tensorfow allocate memory of the GPU on use (which is not optimal for running calculation with JAX). **Therefore, you should install Tensorflow on the CPU instead of the GPU**. Visit this site [Tensorflow - Installation with pip](https://www.tensorflow.org/install/pip?hl=fr#package-location) to install the CPU-only version of Tensorflow 2 depending on your OS and your Python version.
+Then you can install [Tensorflow](https://www.tensorflow.org/) to benefit from `tf.data.Dataset` to handle the data and the pre-installed dataset. However, Tensorfow allocate memory of the GPU on use (which is not optimal for running calculation with JAX). **Therefore, you should install Tensorflow on the CPU instead of the GPU**. Visit this site [Tensorflow - Installation with pip](https://www.tensorflow.org/install/pip?hl=en#package-location) to install the CPU-only version of Tensorflow 2 depending on your OS and your Python version.
 
 Exemple with Linux and Python 3.9:
 
