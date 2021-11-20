@@ -1,0 +1,3 @@
+haiku-dm
+matplotlib
+optax
