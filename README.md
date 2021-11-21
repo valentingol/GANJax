@@ -91,6 +91,8 @@ Then you can implement your own GAN and train/test them in your own dataset (by 
 
 * On CelebA (64x64):
 
+![DCGAN CelebA-64](ressources/dcgan_celeba64.png)
+
 ### - Progressive Growing GAN
 
 * On MNIST:
