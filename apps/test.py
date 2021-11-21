@@ -24,11 +24,11 @@ def generate(zseed, config, n_samples=1, is_training=False):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
-    model_path = 'pre_trained/CIFAR-10/dcgan'
+    model_path = 'pre_trained/CelebA-64/dcgan'
     seed = 0
     zseed = 0
     num_images = (10, 10)
-    cmap = None
+    cmap = 'gray'
 
     key = random.PRNGKey(seed)
     config = Config().load(os.path.join(model_path, 'config.pickle'))
