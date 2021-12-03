@@ -1,79 +1,38 @@
 from time import time
 
 from jax import numpy as jnp, random
-import jaxlib
 import matplotlib.pyplot as plt
 
 from gan.dcgan import DCGAN as GAN
 from utils.data import load_images_celeba_64 as load_images
+from utils.means import Mean
 from utils.plot_img import plot_curves, plot_tensor_images
 from utils.save_and_load import save_gan
 
-Config = GAN().Config
-init_gen = GAN().init_gen
-init_disc = GAN().init_disc
-train_gen = GAN().train_gen
-train_disc = GAN().train_disc
-input_func = GAN().input_func
-gen_fwd_apply = GAN().gen_fwd_apply
-
-
-class Mean(object):
-    """ Compute dynamic mean of given inputs. """
-
-    def __init__(self, init_val=0.0):
-        self.init_val = init_val
-        self.val = init_val
-        self.count = 0
-        # Keep the history of **given inputs**
-        self.history = []
-
-    def reset(self):
-        self.val = self.init_val
-        self.count = 0
-        self.history = []
-
-    def __call__(self, val):
-        if isinstance(val, jaxlib.xla_extension.DeviceArray):
-            val = val.item()
-        # Keep the history of **given inputs**
-        self.history.append(val)
-        self.val = (self.val * self.count + val) / (self.count + 1)
-        self.count += 1
-        return self.val
-
-    def __str__(self):
-        return str(self.val)
-
-    def __repr__(self):
-        return repr(self.val)
-
-    def __format__(self, *args, **kwargs):
-        return self.val.__format__(*args, **kwargs)
-
+gan = GAN()
+trainer = gan.Trainer() # The loss function can be change here
 
 # Global training function
 
-def train_loop(dataset, key, config, n_epochs=60, display_step=500,
-               num_images=(10, 10), plot=True, save_step=None,
-               model_path=None):
-    # Initialize generator and discriminator
+def main(dataset, key, config, n_epochs=60, max_time=None,
+         display_step=500, num_images=(10, 10), plot=True,
+         save_step=None, model_path=None):
+    max_time = max_time or jnp.inf # max_time = inf iif max_time in {0, None}
     kwargs_gen, kwargs_disc = config.get_models_kwargs()
     X_real = jnp.array(dataset.take(1).as_numpy_iterator().next())
     batch_size = X_real.shape[0]
 
-    z = input_func(key, batch_size, config.zdim)
-    state_gen, opt_gen, opt_state_gen, params_gen = init_gen(
+    # Initialize generator and discriminator
+    z = trainer.input_func(key, batch_size, config.zdim)
+    state_gen, opt_gen, opt_state_gen, params_gen = trainer.init_gen(
         key, config, z, kwargs_gen
         )
-
-    state_disc, opt_disc, opt_state_disc, params_disc = init_disc(
+    state_disc, opt_disc, opt_state_disc, params_disc = trainer.init_disc(
         key, config, X_real, kwargs_disc
         )
-
     print('Initialization succeeded.')
+
     mean_loss_gen, mean_loss_disc = Mean(), Mean()
-    history_loss_gen, history_loss_disc = [], []
     len_ds = int(dataset.__len__())
     itr = 0
     start = time()
@@ -90,33 +49,23 @@ def train_loop(dataset, key, config, n_epochs=60, display_step=500,
                   f'time: {int(t_h)}h {int(t_m)}min {int(t_s)}sec - '
                   f'eta: {int(eta_h)}h {int(eta_m)}min {int(eta_s)}sec    ',
                   end='\r')
-            X_real = jnp.array(X_real)
-            batch_size = X_real.shape[0]
-            key, *keys = random.split(key, 1 + config.cylce_train_disc)
+            key, subkey = random.split(key, 2)
 
-            z = input_func(key, batch_size, config.zdim)
+            # Training both generator and discriminator
+            (params_gen, params_disc, state_gen, state_disc,
+             opt_state_gen, opt_state_disc, mean_loss_gen,
+             mean_loss_disc) = trainer.cycle_train(
+                X_real, key, params_gen, params_disc, state_gen, state_disc,
+                opt_gen, opt_state_gen, opt_disc, opt_state_disc, kwargs_gen,
+                kwargs_disc, mean_loss_gen, mean_loss_disc, config
+                )
 
-            (params_gen, state_gen, state_disc, opt_state_gen,
-             loss_gen) = train_gen(
-                    params_gen, params_disc, state_gen, state_disc, opt_gen,
-                    opt_state_gen, z, True, kwargs_gen, kwargs_disc
-                    )
-            mean_loss_gen(loss_gen)
-
-            for k in range(config.cylce_train_disc):
-                z = input_func(keys[k], batch_size, config.zdim)
-
-                (params_disc, state_disc, state_gen, opt_state_disc,
-                 loss_disc) = train_disc(
-                    params_disc, params_gen, state_disc, state_gen, opt_disc,
-                    opt_state_disc, z, X_real, True, kwargs_gen, kwargs_disc
-                    )
-                mean_loss_disc(loss_disc)
             itr += 1
-
+            # Plot images
             if plot and itr % display_step == 0 and itr > 0:
-                z = input_func(key, num_images[0]*num_images[1], config.zdim)
-                X_fake, state_gen = gen_fwd_apply(
+                z = trainer.input_func(subkey, num_images[0]*num_images[1],
+                                       config.zdim)
+                X_fake, state_gen = trainer.gen_fwd_apply(
                     params_gen, state_gen, None, z, kwargs_gen,
                     is_training=False
                     )
@@ -128,18 +77,24 @@ def train_loop(dataset, key, config, n_epochs=60, display_step=500,
 
             if (save_step is not None and model_path is not None
                 and itr % save_step == 0 and itr > 0):
-                save_gan(params_gen, state_gen, params_disc, state_disc, config,
-                         model_path + f'/itr{itr}', verbose=False)
+                save_gan(params_gen, state_gen, params_disc, state_disc,
+                         config, model_path + f'/itr{itr}', verbose=False)
 
-        history_loss_gen.extend(mean_loss_gen.history)
-        history_loss_disc.extend(mean_loss_disc.history)
+            if time() - start >= max_time:
+                print('\n\nTraining time limit reached.')
+                break
+
         mean_loss_gen.reset(), mean_loss_disc.reset()
         print()
 
-    history = {'loss_gen': history_loss_gen, 'loss_disc': history_loss_disc}
+        if time() - start >= max_time:
+            break
+
+    history = {'loss_gen': mean_loss_gen.history,
+               'loss_disc': mean_loss_disc.history}
     if plot:
-        z = input_func(key, num_images[0]*num_images[1], config.zdim)
-        X_fake, state_gen = gen_fwd_apply(
+        z = trainer.input_func(key, num_images[0]*num_images[1], config.zdim)
+        X_fake, state_gen = trainer.gen_fwd_apply(
             params_gen, state_gen, None, z, kwargs_gen, is_training=False,
             )
         plt.figure(figsize=(40, 20))
@@ -156,16 +111,17 @@ def train_loop(dataset, key, config, n_epochs=60, display_step=500,
 if __name__ == '__main__':
     # Global configs
     seed = 0
-    save_name = "CelebA-64/dcgan" # None or empty to not save
+    save_name = "MyGann" # None or empty to not save
     batch_size = 128
-    n_epochs = 40
+    n_epochs = 20
+    max_time = None  # in seconds
     display_step = 100
-    save_step = 3000
+    save_step = 10000
     num_images = (6, 6)
-    plot = False
+    plot = True
 
     # DCGAN configs
-    config = Config(
+    config = gan.Config(
         zdim=100,
         cylce_train_disc=1,
         lr_gen=2e-4,
@@ -188,15 +144,18 @@ if __name__ == '__main__':
 
     model_path = f'pre_trained/{save_name}'
 
-    params_gen, state_gen, params_disc, state_disc, history = train_loop(
-        dataset, key, config,
+    params_gen, state_gen, params_disc, state_disc, history = main(
+        dataset=dataset,
+        key=key,
+        config=config,
         n_epochs=n_epochs,
+        max_time=max_time,
         display_step=display_step,
         num_images=num_images,
         plot=plot,
         model_path=model_path,
         save_step=save_step,
-    )
+        )
 
     if save_name is not None and save_name != '':
         print()

@@ -24,8 +24,8 @@ class GANConfig(object):
     def get_models_kwargs(self):
         """ Return intitialization kwargs for generator
         and discriminator (parameters of __init__).
-        See hk.data_structures.to_haiku_dict to transform
-        a dict to a haiku dict.
+        See hk.data_structures.to_immutable_dict to transform
+        a dict to an (immutable) haiku dict.
 
         Returns:
             kwargs_gen: haiku dict
