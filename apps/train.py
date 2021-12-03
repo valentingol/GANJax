@@ -113,8 +113,8 @@ if __name__ == '__main__':
     seed = 0
     save_name = "MyGann" # None or empty to not save
     batch_size = 128
-    n_epochs = 2
-    max_time = 10  # in seconds
+    n_epochs = 20
+    max_time = None  # in seconds
     display_step = 100
     save_step = 10000
     num_images = (6, 6)
