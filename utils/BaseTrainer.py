@@ -4,8 +4,6 @@ import haiku as hk
 from jax import grad, jit, numpy as jnp, random
 import optax
 
-from gan.dcgan.modules import DCGenerator, DCDiscriminator
-
 class BaseTrainer(object):
     """
     Base class for all GAN trainers. The fonctions inside
@@ -18,23 +16,21 @@ class BaseTrainer(object):
         easier to change further). """
         self.loss_fn = loss_fn
 
+    @hk.transform_with_state
+    def disc_fwd(self, *args, **kwargs):
+        raise NotImplementedError(
+            "disc_fwd must be overwrite on each trainer!"
+            )
+
+    @hk.transform_with_state
+    def gen_fwd(self, *args, **kwargs):
+        raise NotImplementedError(
+            "gen_fwd must be overwrite on each trainer!"
+            )
+
     def input_func(self, key, batch_size, zdim):
         """ Input of generator ( = "noise" in classic GAN). """
         return random.normal(key, (batch_size, zdim))
-
-    @hk.transform_with_state
-    def gen_fwd(self, z, kwargs_gen, is_training):
-        """ (transformed) Forward pass of generator. """
-        generator = DCGenerator(**kwargs_gen)
-        X_fake = generator(z, is_training=is_training)
-        return X_fake
-
-    @hk.transform_with_state
-    def disc_fwd(self, X, kwargs_disc, is_training):
-        """ (transformed) Discriminator pass of generator. """
-        discriminator = DCDiscriminator(**kwargs_disc)
-        y_pred = discriminator(X, is_training=is_training)
-        return y_pred
 
     def gen_fwd_init(self, key, *args, **kwargs):
         """ Simplify the use of gen_fwd.init """
