@@ -3,6 +3,7 @@ import os
 import cv2
 import tensorflow as tf
 
+
 def load_images_mnist(batch_size=128, seed=0):
     def prepare_dataset(X):
         X = tf.cast(X, tf.float32)
@@ -47,11 +48,11 @@ def load_images_celeba_64(batch_size=128, seed=0, path='data/CelebA/images'):
             yield img
     dataset = tf.data.Dataset.from_generator(
         generate_data, output_types=tf.float32, output_shapes=(64, 64, 3)
-        )
-    dataset = dataset.shuffle(buffer_size=1000, seed=seed)
+    )
+    dataset = dataset.shuffle(buffer_size=203000, seed=seed)
     dataset = dataset.batch(batch_size).prefetch(buffer_size=-1)
-    dataset.__len__ = lambda : tf.constant(202_599 // batch_size + 1,
-                                           dtype=tf.int64)
+    dataset.__len__ = lambda: tf.constant(202_599 // batch_size + 1,
+                                          dtype=tf.int64)
     return dataset
 
 
@@ -66,13 +67,12 @@ def load_images_celeba_128(batch_size=128, seed=0, path='data/CelebA/images'):
             yield img
     dataset = tf.data.Dataset.from_generator(
         generate_data, output_types=tf.float32, output_shapes=(128, 128, 3)
-        )
-    dataset = dataset.shuffle(buffer_size=1000, seed=seed)
+    )
+    dataset = dataset.shuffle(buffer_size=203000, seed=seed)
     dataset = dataset.batch(batch_size).prefetch(buffer_size=-1)
-    dataset.__len__ = lambda : tf.constant(202_599 // batch_size + 1,
-                                           dtype=tf.int64)
+    dataset.__len__ = lambda: tf.constant(202_599 // batch_size + 1,
+                                          dtype=tf.int64)
     return dataset
-
 
 
 if __name__ == '__main__':
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     tf.print('spec:', ds.element_spec)
     plt.figure(figsize=(10, 10))
     for i, x in enumerate(ds):
-        x = (x + 1.0) / 2.0 # between [0, 1]
+        x = (x + 1.0) / 2.0  # between [0, 1]
         plt.subplot(5, 5, i + 1)
         plt.grid(False)
         plt.axis('off')
