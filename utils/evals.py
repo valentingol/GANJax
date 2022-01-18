@@ -11,7 +11,7 @@ from jax_fid import fid, inception
 def compute_statistics_from_image(images, params, apply_fn, batch_size=1, img_size=None):
     if type(images) == str:
         imgs = []
-        for f in os.listdir(images)[:100]:
+        for f in os.listdir(images):
             img = Image.open(os.path.join(images, f))
             img = jnp.array(img) / 255.0
             if img_size is not None:
