@@ -1,11 +1,14 @@
 import os
 
-import haiku as hk
 from jax import random
+import haiku as hk
+
+import argparse
 
 from gan.dcgan import DCGAN as GAN
 from utils.save_and_load import load_jax_model
 from utils.plot_img import plot_tensor_images
+from utils.evals import frechet_inception_distance
 
 gan = GAN()
 trainer = gan.Trainer()
@@ -40,5 +43,23 @@ if __name__ == '__main__':
                                n_samples=num_images[0]*num_images[1],
                                is_training=False)
 
+
+
+    ### evaluation
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--eval', type=str, help='Evaluation method')
+    parser.add_argument('--dataset_path', type=str, help='Real dataset on which to compute the evaluation metric')
+    args = parser.parse_args()
+
+    if args.eval == 'FID':
+        print('Evaluating FID score...')
+        assert 'dataset_path' in args
+        images_eval = (images + 1)/2 # rescale values between 0 and 1 for evaluation
+
+        score = frechet_inception_distance(images_eval, args.dataset_path, img_size=(256,256))
+        print('FID score : ' + str(score))
+
+
     plot_tensor_images(images, num_images=num_images, cmap=cmap)
     plt.show()
+
