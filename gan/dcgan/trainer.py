@@ -18,6 +18,7 @@ class DCGANTrainer(BaseTrainer):
     def __init__(self, loss_fn=None):
         """ Initialize the loss function (to make it
         easier to change further). By default cross entropy. """
+        super().__init__()
         loss_fn = cross_entropy if loss_fn is None else loss_fn
         self.loss_fn = loss_fn
 
