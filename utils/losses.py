@@ -6,6 +6,7 @@ import optax
 def cross_entropy(logits, labels):
     return optax.sigmoid_binary_cross_entropy(logits, labels)
 
+
 @jit
 def wasserstein(logits, labels):
     # Wasserstein Loss without clipping
