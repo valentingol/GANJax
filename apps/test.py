@@ -1,14 +1,13 @@
 import os
+import argparse
+import pickle
 
 from jax import random
 import haiku as hk
 
-import argparse
-
 from gan.dcgan import DCGAN as GAN
 from utils.save_and_load import load_jax_model
 from utils.plot_img import plot_tensor_images
-from utils.evals import frechet_inception_distance
 
 gan = GAN()
 trainer = gan.Trainer()
@@ -25,6 +24,9 @@ def generate(zseed, config, n_samples=1, is_training=False):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--save_images_path', type=str, help='Path to save generated images')
+    args = parser.parse_args()
     model_path = 'pre_trained/CelebA-64/dcgan'
     seed = 0
     zseed = 0
@@ -42,22 +44,10 @@ if __name__ == '__main__':
                                config=config,
                                n_samples=num_images[0]*num_images[1],
                                is_training=False)
-
-
-
-    ### evaluation
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--eval', type=str, help='Evaluation method')
-    parser.add_argument('--dataset_path', type=str, help='Real dataset on which to compute the evaluation metric')
-    args = parser.parse_args()
-
-    if args.eval == 'FID':
-        print('Evaluating FID score...')
-        assert 'dataset_path' in args
-        images_eval = (images + 1)/2 # rescale values between 0 and 1 for evaluation
-
-        score = frechet_inception_distance(images_eval, args.dataset_path, img_size=(256,256))
-        print('FID score : ' + str(score))
+    
+    if args.save_images_path is not None:
+        with open(args.save_images_path, 'wb') as save_images:
+            pickle.dump(images, save_images)
 
 
     plot_tensor_images(images, num_images=num_images, cmap=cmap)
