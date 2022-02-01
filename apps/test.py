@@ -1,7 +1,9 @@
 import os
+import argparse
+import pickle
 
-import haiku as hk
 from jax import random
+import haiku as hk
 
 from gan.dcgan import DCGAN as GAN
 from utils.save_and_load import load_jax_model
@@ -22,6 +24,9 @@ def generate(zseed, config, n_samples=1, is_training=False):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--save_images_path', type=str, help='Path to save generated images')
+    args = parser.parse_args()
     model_path = 'pre_trained/CelebA-64/dcgan'
     seed = 0
     zseed = 0
@@ -39,6 +44,12 @@ if __name__ == '__main__':
                                config=config,
                                n_samples=num_images[0]*num_images[1],
                                is_training=False)
+    
+    if args.save_images_path is not None:
+        with open(args.save_images_path, 'wb') as save_images:
+            pickle.dump(images, save_images)
+
 
     plot_tensor_images(images, num_images=num_images, cmap=cmap)
     plt.show()
+
