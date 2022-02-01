@@ -9,7 +9,7 @@ class DCGANConfig(GANConfig):
     def default_init(self):
         """ Overwrite the default_init to define the
         configs for the DCGAN. """
-        # Gneral
+        # General
         self.cylce_train_disc = 5
 
         # Latent input vector
