@@ -1,6 +1,3 @@
-import haiku as hk
-from haiku.initializers import Constant, RandomNormal
-import jax
 from jax import jit, numpy as jnp, random
 
 

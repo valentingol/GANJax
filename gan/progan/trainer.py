@@ -65,7 +65,13 @@ class ProGANTrainer(BaseTrainer):
                                                   kwargs_gen=kwargs_gen)
         # Merge the old params with the new ones (by the names of layers)
         if old_params is not None:
-            params_gen = {**params_gen, **old_params}
+            old_params = hk.data_structures.to_mutable_dict(old_params)
+            conv11 = old_params[f'{config.name_gen}/~/new_conv11']
+            old_params[f'{config.name_gen}/~/prev_conv11'] = conv11
+            del old_params[f'{config.name_gen}/~/new_conv11']
+            old_params = hk.data_structures.to_haiku_dict(old_params)
+            params_gen = hk.data_structures.merge(params_gen, old_params)
+
 
         opt_gen = optax.adam(
             learning_rate=config.lr_gen,
@@ -82,7 +88,12 @@ class ProGANTrainer(BaseTrainer):
                                          kwargs_disc=kwargs_disc)
         # Merge the old params with the new ones (by the names of layers)
         if old_params is not None:
-            params_disc = {**params_disc, **old_params}
+            old_params = hk.data_structures.to_mutable_dict(old_params)
+            conv11 = old_params[f'{config.name_disc}/~/new_conv11']
+            old_params[f'{config.name_disc}/~/prev_conv11'] = conv11
+            del old_params[f'{config.name_disc}/~/new_conv11']
+            old_params = hk.data_structures.to_haiku_dict(old_params)
+            params_disc = hk.data_structures.merge(params_disc, old_params)
 
         opt_disc = optax.adam(
             learning_rate=config.lr_disc,
@@ -108,7 +119,7 @@ class ProGANTrainer(BaseTrainer):
         """ Computes the loss of the discriminator over one batch. """
         X_fake = self.gen_fwd_apply(params_gen, z, alpha, kwargs_gen)
         unif_rd = random.uniform(key, shape=X_real.shape)
-        X_fake = unif_rd * X_real + (1 - unif_rd) * X_fake
+        # X_fake = unif_rd * X_real + (1 - unif_rd) * X_fake
         y_pred_fake = self.disc_fwd_apply(params_disc, X_fake, alpha,
                                          kwargs_disc)
         y_pred_real = self.disc_fwd_apply(params_disc, X_real, alpha,
@@ -124,8 +135,8 @@ class ProGANTrainer(BaseTrainer):
         grads_data = grad(mean_fwd_data, argnums=1)(
             params_disc, X_fake, alpha, kwargs_disc
         )
-        grad_penalty = (optax.global_norm(grads_data) - lambd) ** 2
-        loss_disc = fake_loss + real_loss + grad_penalty / (lambd ** 2)
+        grad_penalty = (optax.global_norm(grads_data) - 1) ** 2
+        loss_disc = fake_loss + real_loss + grad_penalty * lambd
         loss_disc = jnp.mean(loss_disc)
         return loss_disc
 
@@ -211,6 +222,21 @@ class ProGANTrainer(BaseTrainer):
         kwargs_disc = hk.data_structures.to_immutable_dict(kwargs_disc_mutable)
         return kwargs_gen, kwargs_disc
 
+    def init_models(self, dataset, resolution, config, key, kwargs_gen,
+                    kwargs_disc, old_params_gen, old_params_disc):
+        for X_real in dataset.take(1):
+            X_real = tf.image.resize(X_real, (2 * resolution, 2 * resolution))
+            X_real = jnp.array(X_real)
+            batch_size = X_real.shape[0]
+        z = self.input_func(key, batch_size, config.zdim)
+        opt_gen, opt_state_gen, params_gen = self.init_gen(
+            key, config, z, kwargs_gen, old_params=old_params_gen
+            )
+        opt_disc, opt_state_disc, params_disc = self.init_disc(
+            key, config, X_real, kwargs_disc, old_params=old_params_disc
+            )
+        return (opt_gen, opt_state_gen, params_gen, opt_disc, opt_state_disc,
+                params_disc)
 
     def main(self, dataset, key, config, max_time=None,
          display_step=500, num_images=(10, 10), plot=True,
@@ -224,17 +250,10 @@ class ProGANTrainer(BaseTrainer):
                                                            kwargs_disc)
         resolution = config.first_resolution
         # Initialize generator and discriminator
-        for X_real in dataset.take(1):
-            X_real = tf.image.resize(X_real, (2 * resolution, 2 * resolution))
-            X_real = jnp.array(X_real)
-            batch_size = X_real.shape[0]
-        z = self.input_func(key, batch_size, config.zdim)
-        opt_gen, opt_state_gen, params_gen = self.init_gen(
-            key, config, z, kwargs_gen, old_params=None
-            )
-        opt_disc, opt_state_disc, params_disc = self.init_disc(
-            key, config, X_real, kwargs_disc, old_params=None
-            )
+        (opt_gen, opt_state_gen, params_gen, opt_disc, opt_state_disc,
+                params_disc) = self.init_models(dataset, resolution, config,
+                                                key, kwargs_gen, kwargs_disc,
+                                                None, None)
         print('Initialization succeeded.')
 
         mean_loss_gen, mean_loss_disc = Mean(), Mean()
@@ -249,16 +268,13 @@ class ProGANTrainer(BaseTrainer):
 
             # Reinitialize the params using previous ones
             # and update the architectures
-            if step > 1:
+            if step > 0:
                 kwargs_gen, kwargs_disc = self.update_block_config(kwargs_gen,
                                                                    kwargs_disc)
-                z = self.input_func(key, batch_size, config.zdim)
-                opt_gen, opt_state_gen, params_gen = self.init_gen(
-                    key, config, z, kwargs_gen, old_params=params_gen
-                    )
-                opt_disc, opt_state_disc, params_disc = self.init_disc(
-                    key, config, X_real, kwargs_disc, old_params=params_disc
-                    )
+                (opt_gen, opt_state_gen, params_gen, opt_disc, opt_state_disc,
+                params_disc) = self.init_models(dataset, resolution, config,
+                                                key, kwargs_gen, kwargs_disc,
+                                                params_gen, params_disc)
 
             growing_epochs = config.growing_epochs[step]
             fixed_epochs = config.fixed_epochs[step]

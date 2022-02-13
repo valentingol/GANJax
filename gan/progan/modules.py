@@ -10,9 +10,11 @@ class ProGeneratorBlock(hk.Module):
         super().__init__(name=name)
         self.channels = channels
         self.conv1 = hk.Conv2D(self.channels, 3, padding='SAME',
-                              w_init=VScaling(2.0), with_bias=False)
+                              w_init=VScaling(2.0), with_bias=False,
+                              name='conv1')
         self.conv2 = hk.Conv2D(self.channels, 3, padding='SAME',
-                              w_init=VScaling(2.0), with_bias=False)
+                              w_init=VScaling(2.0), with_bias=False,
+                              name='conv2')
 
     def __call__(self, x):
         x = self.conv1(x)
@@ -34,11 +36,14 @@ class ProGenerator(hk.Module):
         self.n_blocks = n_blocks
         self.channels = channels
         self.base_lin = hk.Linear(first_resolution**2 * channels[0],
-                                    w_init=VScaling(2.0), with_bias=False)
+                                    w_init=VScaling(2.0), with_bias=False,
+                                    name='base_lin')
         self.base_conv1 = hk.Conv2D(channels[0], 4, padding='SAME',
-                                    w_init=VScaling(2.0), with_bias=False)
+                                    w_init=VScaling(2.0), with_bias=False,
+                                    name='base_conv1')
         self.base_conv2 = hk.Conv2D(channels[0], 3, padding='SAME',
-                                    w_init=VScaling(2.0), with_bias=False)
+                                    w_init=VScaling(2.0), with_bias=False,
+                                    name='base_conv2')
         self.blocks = []
         for i in range(n_blocks):
             self.blocks.append(ProGeneratorBlock(channels[i + 1],
@@ -88,9 +93,11 @@ class ProDiscriminatorBlock(hk.Module):
         super().__init__(name=name)
         self.channels = channels
         self.conv1 = hk.Conv2D(self.channels, 3, padding='SAME',
-                              w_init=VScaling(2.0), with_bias=True)
+                              w_init=VScaling(2.0), with_bias=True,
+                              name='conv1')
         self.conv2 = hk.Conv2D(self.channels, 3, padding='SAME',
-                              w_init=VScaling(2.0), with_bias=True)
+                              w_init=VScaling(2.0), with_bias=True,
+                              name='conv2')
 
     def __call__(self, x):
         x = self.conv1(x)
@@ -109,10 +116,13 @@ class ProDiscriminator(hk.Module):
         self.n_blocks = n_blocks
         self.channels = channels
         self.base_conv1 = hk.Conv2D(channels[0], 3, padding='SAME',
-                                    w_init=VScaling(2.0), with_bias=True)
+                                    w_init=VScaling(2.0), with_bias=True,
+                                    name='base_conv1')
         self.base_conv2 = hk.Conv2D(channels[0], 4, padding='SAME',
-                                    w_init=VScaling(2.0), with_bias=True)
-        self.base_lin = hk.Linear(1, w_init=VScaling(2.0), with_bias=True)
+                                    w_init=VScaling(2.0), with_bias=True,
+                                    name='base_conv2')
+        self.base_lin = hk.Linear(1, w_init=VScaling(2.0), with_bias=True,
+                                  name='base_lin')
         self.blocks = []
         for i in range(n_blocks):
             self.blocks.append(ProGeneratorBlock(channels[i + 1],
@@ -142,7 +152,7 @@ class ProDiscriminator(hk.Module):
         x = alpha * x1 + (1 - alpha) * x2
 
         # Blocks
-        for i in range(0, self.n_blocks - 1, -1):
+        for i in range(self.n_blocks - 2, -1, -1):
             x = self.blocks[i](x)
             x = hk.avg_pool(x, 2, 2, 'SAME')
 
