@@ -1,8 +1,6 @@
-import os
-
 from jax import numpy as jnp, random
 
-from gan.dcgan import DCGAN as GAN
+from gan.progan import ProGAN as GAN
 from utils.data import load_images_cifar10 as load_images
 from utils.save_and_load import save_gan
 
@@ -14,28 +12,37 @@ if __name__ == '__main__':
     seed = 0
     save_name = "MyGAN"  # None or empty to not save
     batch_size = 128
-    n_epochs = 20
     max_time = None  # in seconds
-    display_step = 50
+    display_step = 200
     save_step = 10000
     num_images = (6, 6)
     plot = True
-    with_states = True  # save states or not
-    config_model_path = "pre_trained/CIFAR-10/dcgan"
+    with_states = False  # save states or not
 
     # DCGAN configs
-    config = gan.Config().load(os.path.join(config_model_path,
-                                            'config.pickle'))
+    config = gan.Config(
+        zdim=64,
+        channels_gen=64,
+        channels_disc=64,
+        first_resolution=8,
+        n_steps=1,
+        growing_epochs = (100,),
+        fixed_epochs = (100,),
+        cylce_train_disc=2,
+        lr_gen=1e-5,
+        lr_disc=1e-6,
+        lambda_gp=10,
+    )
 
     key = random.PRNGKey(seed)
     dataset = load_images(batch_size=batch_size, seed=seed)
+    print('Dataset loaded.')
     model_path = f'pre_trained/{save_name}'
 
     params_gen, state_gen, params_disc, state_disc, history = trainer.main(
         dataset=dataset,
         key=key,
         config=config,
-        n_epochs=n_epochs,
         max_time=max_time,
         display_step=display_step,
         num_images=num_images,
